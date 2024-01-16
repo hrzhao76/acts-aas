@@ -29,7 +29,8 @@ cmake_minimum_required(VERSION 3.17)
 project(ActsExaTrkXbackend LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#
+include_directories(/usr/local/cuda/include/)
+
 # Options
 #
 # Must include options required for this project as well as any
@@ -89,7 +90,7 @@ FetchContent_MakeAvailable(repo-common repo-core repo-backend)
 # set(ACTS_EXATRKX_ENABLE_TORCH ON CACHE BOOL "Build ACTS ExaTrkX with Torch")
 
 # add_subdirectory(src/acts)
-set(CMAKE_PREFIX_PATH "/pscratch/sd/h/hrzhao/Projects/acts/install/")
+# set(CMAKE_PREFIX_PATH "/pscratch/sd/h/hrzhao/Projects/acts/install/")
 find_package(Acts REQUIRED)
 # The backend must be built into a shared library. Use an ldscript to
 # hide all symbols except for the TRITONBACKEND API.
@@ -126,8 +127,8 @@ target_link_libraries(
     triton-core-backendapi  # from repo-core
     triton-core-serverstub  # from repo-core
     triton-backend-utils    # from repo-backend
-    Core
-    PluginExaTrkX
+    ActsCore
+    ActsPluginExaTrkX
 )
 
 if(WIN32)

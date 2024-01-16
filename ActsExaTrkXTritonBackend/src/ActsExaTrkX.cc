@@ -27,6 +27,11 @@
 // Modifications made by Haoran Zhao, 2024.
 // Description of the modifications or additional notes:
 
+#include "Acts/Plugins/ExaTrkX/BoostTrackBuilding.hpp"
+#include "Acts/Plugins/ExaTrkX/ExaTrkXPipeline.hpp"
+#include "Acts/Plugins/ExaTrkX/Stages.hpp"
+#include "Acts/Plugins/ExaTrkX/TorchEdgeClassifier.hpp"
+#include "Acts/Plugins/ExaTrkX/TorchMetricLearning.hpp"
 #include "triton/backend/backend_common.h"
 #include "triton/backend/backend_input_collector.h"
 #include "triton/backend/backend_model.h"
@@ -444,6 +449,54 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
       ModelInstanceState::Create(model_state, instance, &instance_state));
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceSetState(
       instance, reinterpret_cast<void*>(instance_state)));
+
+  // Prepare the graphConstructor, edgeClassifiers and trackBuilder
+  std::string modelDir =
+      "/workspace/exatrkx-acts-demonstrator/models/smeared_hits/";
+  std::string metricLearningmodelPath = modelDir + "embed.pt";
+  std::string filtermodelPath = modelDir + "filter.pt";
+  std::string gnnmodelPath = modelDir + "gnn.pt";
+
+  auto metricLearningLogger =
+      Acts::getDefaultLogger("MetricLearning", Acts::Logging::VERBOSE);
+  auto filterLogger =
+      Acts::getDefaultLogger("FilterModel", Acts::Logging::VERBOSE);
+  auto gnnLogger = Acts::getDefaultLogger("GNNModel", Acts::Logging::VERBOSE);
+  auto trackBuilderLogger =
+      Acts::getDefaultLogger("TrackBuilder", Acts::Logging::VERBOSE);
+  int numFeatures = 3;
+  Acts::TorchMetricLearning::Config metricLearningConfig;
+  metricLearningConfig.modelPath = metricLearningmodelPath;
+  metricLearningConfig.numFeatures = 3;
+  metricLearningConfig.embeddingDim = 12;
+  std::shared_ptr<Acts::GraphConstructionBase> graphConstructor =
+      std::make_shared<Acts::TorchMetricLearning>(
+          metricLearningConfig, std::move(metricLearningLogger));
+
+  // Set up the edge classifiers
+  Acts::TorchEdgeClassifier::Config filterConfig;
+  filterConfig.modelPath = filtermodelPath;
+  filterConfig.numFeatures = 3;
+  auto filterClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
+      filterConfig, std::move(filterLogger));
+
+  Acts::TorchEdgeClassifier::Config gnnConfig;
+  gnnConfig.modelPath = gnnmodelPath;
+  gnnConfig.numFeatures = numFeatures;
+  auto gnnClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
+      gnnConfig, std::move(gnnLogger));
+
+  std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers = {
+      filterClassifier, gnnClassifier};
+
+  // Set up the track builder
+  auto trackBuilder =
+      std::make_shared<Acts::BoostTrackBuilding>(std::move(trackBuilderLogger));
+
+  // Initialize the ExaTrkXPipeline object with the components
+  Acts::ExaTrkXPipeline pipeline(
+      graphConstructor, edgeClassifiers, trackBuilder,
+      Acts::getDefaultLogger("ExaTrkXPipeline", Acts::Logging::VERBOSE));
 
   return nullptr;  // success
 }
