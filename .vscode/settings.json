@@ -1,0 +1,5 @@
+{
+    "cmake.sourceDirectory": "/workspace/ActsExaTrkXTritonBackend",
+    "cmake.buildDirectory": "${workspaceFolder}/ActsExaTrkXTritonBackend/build",
+    "cmake.generator": "Unix Makefiles"
+}
