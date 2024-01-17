@@ -42,9 +42,10 @@ include_directories(/usr/local/cuda/include/)
 option(TRITON_ENABLE_GPU "Enable GPU support in backend" OFF)
 option(TRITON_ENABLE_STATS "Include statistics collections in backend" ON)
 
-set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
-set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
-set(TRITON_BACKEND_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/backend repo")
+# change "main" to "r22.02"
+set(TRITON_COMMON_REPO_TAG "r22.02" CACHE STRING "Tag for triton-inference-server/common repo")
+set(TRITON_CORE_REPO_TAG "r22.02" CACHE STRING "Tag for triton-inference-server/core repo")
+set(TRITON_BACKEND_REPO_TAG "r22.02" CACHE STRING "Tag for triton-inference-server/backend repo")
 
 #
 # Setting C++ min standard
@@ -90,7 +91,7 @@ FetchContent_MakeAvailable(repo-common repo-core repo-backend)
 # set(ACTS_EXATRKX_ENABLE_TORCH ON CACHE BOOL "Build ACTS ExaTrkX with Torch")
 
 # add_subdirectory(src/acts)
-# set(CMAKE_PREFIX_PATH "/pscratch/sd/h/hrzhao/Projects/acts/install/")
+set(CMAKE_PREFIX_PATH "/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/dev/backend_01172024")
 find_package(Acts REQUIRED)
 # The backend must be built into a shared library. Use an ldscript to
 # hide all symbols except for the TRITONBACKEND API.
@@ -151,7 +152,8 @@ endif()
 # Install
 #
 include(GNUInstallDirs)
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/ActsExaTrkXBackend)
+# set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/ActsExaTrkXBackend)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_PREFIX}/lib/cmake/ActsExaTrkXBackend)
 
 install(
   TARGETS

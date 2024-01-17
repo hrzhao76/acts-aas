@@ -170,22 +170,40 @@ class ModelState : public BackendModel {
   const std::string& OutputTensorName() const { return output_name_; }
 
   // Datatype of the input and output tensor
-  TRITONSERVER_DataType TensorDataType() const { return datatype_; }
+  TRITONSERVER_DataType InputTensorDataType() const { return input_datatype_; }
+  TRITONSERVER_DataType OutputTensorDataType() const
+  {
+    return output_datatype_;
+  }
 
   // Shape of the input and output tensor as given in the model
   // configuration file. This shape will not include the batch
   // dimension (if the model has one).
-  const std::vector<int64_t>& TensorNonBatchShape() const { return nb_shape_; }
+  // const std::vector<int64_t>& TensorNonBatchShape() const { return nb_shape_;
+  // }
 
   // Shape of the input and output tensor, including the batch
   // dimension (if the model has one). This method cannot be called
   // until the model is completely loaded and initialized, including
   // all instances of the model. In practice, this means that backend
   // should only call it in TRITONBACKEND_ModelInstanceExecute.
-  TRITONSERVER_Error* TensorShape(std::vector<int64_t>& shape);
+  const std::vector<int64_t>& InputTensorNonBatchShape() const
+  {
+    return input_nb_shape_;
+  }
+  const std::vector<int64_t>& OutputTensorNonBatchShape() const
+  {
+    return output_nb_shape_;
+  }
 
   // Validate that this model is supported by this backend.
   TRITONSERVER_Error* ValidateModelConfig();
+
+ public:
+  std::string model_path;
+  int64_t spacepointFeatures;
+  bool model_verbose;
+  std::string model_type = "default";
 
  private:
   ModelState(TRITONBACKEND_Model* triton_model);
@@ -193,19 +211,82 @@ class ModelState : public BackendModel {
   std::string input_name_;
   std::string output_name_;
 
-  TRITONSERVER_DataType datatype_;
+  TRITONSERVER_DataType input_datatype_;
+  TRITONSERVER_DataType output_datatype_;
+
+
+  std::vector<int64_t> input_nb_shape_;
+  std::vector<int64_t> input_shape_;
+  std::vector<int64_t> output_nb_shape_;
+  std::vector<int64_t> output_shape_;
 
   bool shape_initialized_;
-  std::vector<int64_t> nb_shape_;
-  std::vector<int64_t> shape_;
 };
 
 ModelState::ModelState(TRITONBACKEND_Model* triton_model)
-    : BackendModel(triton_model), shape_initialized_(false)
+    : BackendModel(triton_model),
+      model_path(
+          "/pscratch/sd/h/hrzhao/Projects/exatrkx-acts-demonstrator/models/"
+          "smeared_hits/"),
+      spacepointFeatures(3), model_verbose(false), model_type("default")
 {
   // Validate that the model's configuration matches what is supported
   // by this backend.
   THROW_IF_BACKEND_MODEL_ERROR(ValidateModelConfig());
+
+  const char* path = nullptr;
+  TRITONBACKEND_ArtifactType artifact_type;
+  THROW_IF_BACKEND_MODEL_ERROR(
+      TRITONBACKEND_ModelRepository(triton_model, &artifact_type, &path));
+  std::string execution_model_path = "";
+  std::string execution_model_type = "";
+
+  TRITONBACKEND_Backend* backend;
+  THROW_IF_BACKEND_MODEL_ERROR(
+      TRITONBACKEND_ModelBackend(triton_model, &backend));
+
+  triton::common::TritonJson::Value params;
+  common::TritonJson::Value model_config;
+  if (model_config_.Find("parameters", &params)) {
+    // Skip the EXECUTION_MODEL_PATH variable if it doesn't exist.
+    TRITONSERVER_Error* error = GetParameterValue(
+        params, "EXECUTION_MODEL_PATH", &execution_model_path);
+    if (error == nullptr) {
+      std::string relative_path_keyword = "$$TRITON_MODEL_DIRECTORY";
+      size_t relative_path_loc =
+          execution_model_path.find(relative_path_keyword);
+      if (relative_path_loc != std::string::npos) {
+        execution_model_path.replace(
+            relative_path_loc, relative_path_loc + relative_path_keyword.size(),
+            path);
+      }
+      LOG_MESSAGE(
+          TRITONSERVER_LOG_INFO,
+          (std::string("Using the model path: ") + execution_model_path)
+              .c_str());
+      // update the model path in the model state here
+      model_path = execution_model_path;
+    } else {
+      // Delete the error
+      TRITONSERVER_ErrorDelete(error);
+    }
+  }
+
+  // change the model_type to acts-smear if the model is smeared_hits
+  if (model_path.back() == '/') {
+    model_path.pop_back();
+  }
+
+  size_t last_slash = model_path.find_last_of('/');
+  std::string last_folder = model_path.substr(last_slash + 1);
+  if (last_folder == "smeared_hits") {
+    model_type = "acts-smear";
+    LOG_MESSAGE(
+        TRITONSERVER_LOG_INFO,
+        (std::string("Change the model_type to: ") + model_type +
+         std::string(" for smeared_hits model(embeddingDim = 12)"))
+            .c_str());
+  }
 }
 
 TRITONSERVER_Error*
@@ -224,33 +305,33 @@ ModelState::Create(TRITONBACKEND_Model* triton_model, ModelState** state)
   return nullptr;  // success
 }
 
-TRITONSERVER_Error*
-ModelState::TensorShape(std::vector<int64_t>& shape)
-{
-  // This backend supports models that batch along the first dimension
-  // and those that don't batch. For non-batch models the output shape
-  // will be the shape from the model configuration. For batch models
-  // the output shape will be the shape from the model configuration
-  // prepended with [ -1 ] to represent the batch dimension. The
-  // backend "responder" utility used below will set the appropriate
-  // batch dimension value for each response. The shape needs to be
-  // initialized lazily because the SupportsFirstDimBatching function
-  // cannot be used until the model is completely loaded.
-  if (!shape_initialized_) {
-    bool supports_first_dim_batching;
-    RETURN_IF_ERROR(SupportsFirstDimBatching(&supports_first_dim_batching));
-    if (supports_first_dim_batching) {
-      shape_.push_back(-1);
-    }
+// TRITONSERVER_Error*
+// ModelState::TensorShape(std::vector<int64_t>& shape)
+// {
+//   // This backend supports models that batch along the first dimension
+//   // and those that don't batch. For non-batch models the output shape
+//   // will be the shape from the model configuration. For batch models
+//   // the output shape will be the shape from the model configuration
+//   // prepended with [ -1 ] to represent the batch dimension. The
+//   // backend "responder" utility used below will set the appropriate
+//   // batch dimension value for each response. The shape needs to be
+//   // initialized lazily because the SupportsFirstDimBatching function
+//   // cannot be used until the model is completely loaded.
+//   if (!shape_initialized_) {
+//     bool supports_first_dim_batching;
+//     RETURN_IF_ERROR(SupportsFirstDimBatching(&supports_first_dim_batching));
+//     if (supports_first_dim_batching) {
+//       shape_.push_back(-1);
+//     }
 
-    shape_.insert(shape_.end(), nb_shape_.begin(), nb_shape_.end());
-    shape_initialized_ = true;
-  }
+//     shape_.insert(shape_.end(), nb_shape_.begin(), nb_shape_.end());
+//     shape_initialized_ = true;
+//   }
 
-  shape = shape_;
+//   shape = shape_;
 
-  return nullptr;  // success
-}
+//   return nullptr;  // success
+// }
 
 TRITONSERVER_Error*
 ModelState::ValidateModelConfig()
@@ -300,11 +381,12 @@ ModelState::ValidateModelConfig()
   std::string input_dtype, output_dtype;
   RETURN_IF_ERROR(input.MemberAsString("data_type", &input_dtype));
   RETURN_IF_ERROR(output.MemberAsString("data_type", &output_dtype));
-  RETURN_ERROR_IF_FALSE(
-      input_dtype == output_dtype, TRITONSERVER_ERROR_INVALID_ARG,
-      std::string("expected input and output datatype to match, got ") +
-          input_dtype + " and " + output_dtype);
-  datatype_ = ModelConfigDataTypeToTritonServerDataType(input_dtype);
+  // RETURN_ERROR_IF_FALSE(
+  //     input_dtype == output_dtype, TRITONSERVER_ERROR_INVALID_ARG,
+  //     std::string("expected input and output datatype to match, got ") +
+  //         input_dtype + " and " + output_dtype);
+  input_datatype_ = ModelConfigDataTypeToTritonServerDataType(input_dtype);
+  output_datatype_ = ModelConfigDataTypeToTritonServerDataType(output_dtype);
 
   // Input and output must have same shape. Reshape is not supported
   // on either input or output so flag an error is the model
@@ -321,13 +403,14 @@ ModelState::ValidateModelConfig()
   RETURN_IF_ERROR(backend::ParseShape(input, "dims", &input_shape));
   RETURN_IF_ERROR(backend::ParseShape(output, "dims", &output_shape));
 
-  RETURN_ERROR_IF_FALSE(
-      input_shape == output_shape, TRITONSERVER_ERROR_INVALID_ARG,
-      std::string("expected input and output shape to match, got ") +
-          backend::ShapeToString(input_shape) + " and " +
-          backend::ShapeToString(output_shape));
+  // RETURN_ERROR_IF_FALSE(
+  //     input_shape == output_shape, TRITONSERVER_ERROR_INVALID_ARG,
+  //     std::string("expected input and output shape to match, got ") +
+  //         backend::ShapeToString(input_shape) + " and " +
+  //         backend::ShapeToString(output_shape));
 
-  nb_shape_ = input_shape;
+  input_nb_shape_ = input_shape;
+  output_nb_shape_ = output_shape;
 
   return nullptr;  // success
 }
@@ -389,31 +472,69 @@ class ModelInstanceState : public BackendModelInstance {
   static TRITONSERVER_Error* Create(
       ModelState* model_state,
       TRITONBACKEND_ModelInstance* triton_model_instance,
+      std::shared_ptr<Acts::GraphConstructionBase> graphConstructor,
+      std::vector<std::shared_ptr<Acts::EdgeClassificationBase>>
+          edgeClassifiers,
+      std::shared_ptr<Acts::TrackBuildingBase> trackBuilder,
       ModelInstanceState** state);
   virtual ~ModelInstanceState() = default;
 
   // Get the state of the model that corresponds to this instance.
   ModelState* StateForModel() const { return model_state_; }
 
- private:
+  // std::shared_ptr<Acts::GraphConstructionBase> graphConstructor;
+  // std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers;
+  // std::shared_ptr<Acts::TrackBuildingBase> trackBuilder;
+
+  // // Initialize the ExaTrkXPipeline object with the components
+  // Acts::ExaTrkXPipeline pipeline(graphConstructor, edgeClassifiers,
+  // trackBuilder,
+  //     Acts::getDefaultLogger("ExaTrkXPipeline", Acts::Logging::VERBOSE));
+
   ModelInstanceState(
       ModelState* model_state,
-      TRITONBACKEND_ModelInstance* triton_model_instance)
+      TRITONBACKEND_ModelInstance* triton_model_instance,
+      std::shared_ptr<Acts::GraphConstructionBase> graphConstructor,
+      std::vector<std::shared_ptr<Acts::EdgeClassificationBase>>
+          edgeClassifiers,
+      std::shared_ptr<Acts::TrackBuildingBase> trackBuilder)
       : BackendModelInstance(model_state, triton_model_instance),
-        model_state_(model_state)
+        model_state_(model_state), graphConstructor(graphConstructor),
+        edgeClassifiers(edgeClassifiers), trackBuilder(trackBuilder),
+        pipeline(
+            graphConstructor, edgeClassifiers, trackBuilder,
+            Acts::getDefaultLogger("ExaTrkXPipeline", Acts::Logging::VERBOSE))
   {
   }
+  std::vector<std::vector<int>> RunPipeline(
+      std::vector<float>& features, std::vector<int>& spacepointIDs)
+  {
+    return pipeline.run(features, spacepointIDs);
+  }
+
+ private:
+  // 修改后的构造函数
 
   ModelState* model_state_;
+
+  std::shared_ptr<Acts::GraphConstructionBase> graphConstructor;
+  std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers;
+  std::shared_ptr<Acts::TrackBuildingBase> trackBuilder;
+  Acts::ExaTrkXPipeline pipeline;
 };
 
 TRITONSERVER_Error*
 ModelInstanceState::Create(
     ModelState* model_state, TRITONBACKEND_ModelInstance* triton_model_instance,
+    std::shared_ptr<Acts::GraphConstructionBase> graphConstructor,
+    std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers,
+    std::shared_ptr<Acts::TrackBuildingBase> trackBuilder,
     ModelInstanceState** state)
 {
   try {
-    *state = new ModelInstanceState(model_state, triton_model_instance);
+    *state = new ModelInstanceState(
+        model_state, triton_model_instance, graphConstructor, edgeClassifiers,
+        trackBuilder);
   }
   catch (const BackendModelInstanceException& ex) {
     RETURN_ERROR_IF_TRUE(
@@ -442,17 +563,10 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
   RETURN_IF_ERROR(TRITONBACKEND_ModelState(model, &vmodelstate));
   ModelState* model_state = reinterpret_cast<ModelState*>(vmodelstate);
 
-  // Create a ModelInstanceState object and associate it with the
-  // TRITONBACKEND_ModelInstance.
-  ModelInstanceState* instance_state;
-  RETURN_IF_ERROR(
-      ModelInstanceState::Create(model_state, instance, &instance_state));
-  RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceSetState(
-      instance, reinterpret_cast<void*>(instance_state)));
-
   // Prepare the graphConstructor, edgeClassifiers and trackBuilder
   std::string modelDir =
-      "/workspace/exatrkx-acts-demonstrator/models/smeared_hits/";
+      "/pscratch/sd/h/hrzhao/Projects/exatrkx-acts-demonstrator/models/"
+      "smeared_hits/";
   std::string metricLearningmodelPath = modelDir + "embed.pt";
   std::string filtermodelPath = modelDir + "filter.pt";
   std::string gnnmodelPath = modelDir + "gnn.pt";
@@ -466,6 +580,10 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
       Acts::getDefaultLogger("TrackBuilder", Acts::Logging::VERBOSE);
   int numFeatures = 3;
   Acts::TorchMetricLearning::Config metricLearningConfig;
+  Acts::TorchEdgeClassifier::Config filterConfig;
+  Acts::TorchEdgeClassifier::Config gnnConfig;
+  std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers;
+
   metricLearningConfig.modelPath = metricLearningmodelPath;
   metricLearningConfig.numFeatures = 3;
   metricLearningConfig.embeddingDim = 12;
@@ -474,29 +592,31 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
           metricLearningConfig, std::move(metricLearningLogger));
 
   // Set up the edge classifiers
-  Acts::TorchEdgeClassifier::Config filterConfig;
   filterConfig.modelPath = filtermodelPath;
   filterConfig.numFeatures = 3;
   auto filterClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
       filterConfig, std::move(filterLogger));
 
-  Acts::TorchEdgeClassifier::Config gnnConfig;
   gnnConfig.modelPath = gnnmodelPath;
   gnnConfig.numFeatures = numFeatures;
   auto gnnClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
       gnnConfig, std::move(gnnLogger));
 
-  std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers = {
-      filterClassifier, gnnClassifier};
+  edgeClassifiers = {filterClassifier, gnnClassifier};
 
   // Set up the track builder
   auto trackBuilder =
       std::make_shared<Acts::BoostTrackBuilding>(std::move(trackBuilderLogger));
 
-  // Initialize the ExaTrkXPipeline object with the components
-  Acts::ExaTrkXPipeline pipeline(
-      graphConstructor, edgeClassifiers, trackBuilder,
-      Acts::getDefaultLogger("ExaTrkXPipeline", Acts::Logging::VERBOSE));
+
+  // Create a ModelInstanceState object and associate it with the
+  // TRITONBACKEND_ModelInstance.
+  ModelInstanceState* instance_state;
+  RETURN_IF_ERROR(ModelInstanceState::Create(
+      model_state, instance, graphConstructor, edgeClassifiers, trackBuilder,
+      &instance_state));
+  RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceSetState(
+      instance, reinterpret_cast<void*>(instance_state)));
 
   return nullptr;  // success
 }
@@ -664,18 +784,43 @@ TRITONBACKEND_ModelInstanceExecute(
        std::to_string(request_count))
           .c_str());
   std::string tstr;
-  IGNORE_ERROR(BufferAsTypedString(
-      tstr, input_buffer, input_buffer_byte_size,
-      model_state->TensorDataType()));
+  // IGNORE_ERROR(BufferAsTypedString(
+  //     tstr, input_buffer, input_buffer_byte_size,
+  //     model_state->TensorDataType()));
   LOG_MESSAGE(
       TRITONSERVER_LOG_INFO,
       (std::string("batched " + model_state->InputTensorName() + " value: ") +
        tstr)
           .c_str());
 
-  const char* output_buffer = input_buffer;
+  size_t num_floats =
+      input_buffer_byte_size / sizeof(model_state->InputTensorDataType());
+  const float* float_ptr = reinterpret_cast<const float*>(input_buffer);
+  std::vector<float> input_tensor_values(float_ptr, float_ptr + num_floats);
+
+  // const char* output_buffer = input_buffer;
   TRITONSERVER_MemoryType output_buffer_memory_type = input_buffer_memory_type;
   int64_t output_buffer_memory_type_id = input_buffer_memory_type_id;
+  int numSpacepoints =
+      input_tensor_values.size() / model_state->spacepointFeatures;
+
+  std::vector<int> spacepoint_ids;
+  for (int i = 0; i < numSpacepoints; ++i) {
+    spacepoint_ids.push_back(i);
+  }
+
+  std::vector<std::vector<int>> track_candidates =
+      instance_state->RunPipeline(input_tensor_values, spacepoint_ids);
+
+  std::vector<int64_t> output_data(
+      numSpacepoints, -1);  // Initialized all to -1
+  for (int64_t i = 0; i < static_cast<int64_t>(track_candidates.size()); ++i) {
+    for (int64_t Spacepoint_idx : track_candidates[i]) {
+      if (Spacepoint_idx <= numSpacepoints) {
+        output_data[Spacepoint_idx] = i;
+      }
+    }
+  }
 
   uint64_t compute_end_ns = 0;
   SET_TIMESTAMP(compute_end_ns);
@@ -685,9 +830,22 @@ TRITONBACKEND_ModelInstanceExecute(
       responses, request_count,
       model_state->SupportsFirstDimBatching(&supports_first_dim_batching));
 
-  std::vector<int64_t> tensor_shape;
-  RESPOND_ALL_AND_SET_NULL_IF_ERROR(
-      responses, request_count, model_state->TensorShape(tensor_shape));
+  // std::vector<int64_t> tensor_shape;
+  // RESPOND_ALL_AND_SET_NULL_IF_ERROR(
+  //     responses, request_count, model_state->TensorShape(tensor_shape));
+
+
+  // int numSpacepoints = input_tensor_values.size() /
+  // model_state->spacepointFeatures; Prepare the output. Originally it's a
+  // vector of vector of int, which is converted to a vector of int Spacepoints
+  // IDs are the indices of the output vector, and the value is the track
+  // candidate ID
+
+
+  const char* output_buffer = reinterpret_cast<const char*>(output_data.data());
+
+  std::vector<int64_t> output_tensor_shape;
+  output_tensor_shape.push_back(static_cast<int64_t>(output_data.size()));
 
   // Because the output tensor values are concatenated into a single
   // contiguous 'output_buffer', the backend must "scatter" them out
@@ -706,9 +864,9 @@ TRITONBACKEND_ModelInstanceExecute(
       nullptr /* stream*/);
 
   responder.ProcessTensor(
-      model_state->OutputTensorName().c_str(), model_state->TensorDataType(),
-      tensor_shape, output_buffer, output_buffer_memory_type,
-      output_buffer_memory_type_id);
+      model_state->OutputTensorName().c_str(),
+      model_state->OutputTensorDataType(), output_tensor_shape, output_buffer,
+      output_buffer_memory_type, output_buffer_memory_type_id);
 
   // Finalize the responder. If 'true' is returned, the output
   // tensors' data will not be valid until the backend synchronizes
