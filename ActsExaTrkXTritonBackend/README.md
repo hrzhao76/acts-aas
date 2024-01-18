@@ -3,9 +3,19 @@
 This custom backend is based on the Triton backend example:
 https://github.com/triton-inference-server/backend/tree/main/examples/backends/recommended
 
-Setup:
+## Compile the backend
+
+### Prerequisites
+The first step is to compile the ACTS library with the ExaTrkX plugin enabled. This will provide the necessary headers and libraries for the backend to link against.
+
+Then compile the triton backend with the compiled ACTS library as CMAKE_PREFIX_PATH.
+
+## Dev Note
+Worklog:
 1. rename "recommended" to "ActsExaTrkX"
 2. add ExaTrkXPipeline. 01/17/2024
-    the current question is it says `UNAVAILABLE: Internal: GPU instances not supported`. See [log.lunch.txt](./log.lunch.txt)
-    Try to debug.
-g
+3. fix the error of "GPU instances not supported". 01/18/2024
+
+Todo:
+- [ ] test the inference of the backend.
+- [ ] clean the backend code.

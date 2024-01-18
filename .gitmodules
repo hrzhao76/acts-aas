@@ -1,3 +1,0 @@
-[submodule "ActsExaTrkXTritonBackend/src/acts"]
-	path = ActsExaTrkXTritonBackend/src/acts
-	url = https://github.com/acts-project/acts.git

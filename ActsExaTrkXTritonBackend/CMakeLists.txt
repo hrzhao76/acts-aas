@@ -39,7 +39,7 @@ include_directories(/usr/local/cuda/include/)
 # GPU support is disabled by default because ActsExaTrkX backend
 # doesn't use GPUs.
 #
-option(TRITON_ENABLE_GPU "Enable GPU support in backend" OFF)
+option(TRITON_ENABLE_GPU "Enable GPU support in backend" ON)
 option(TRITON_ENABLE_STATS "Include statistics collections in backend" ON)
 
 # change "main" to "r22.02"
