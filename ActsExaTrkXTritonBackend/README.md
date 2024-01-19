@@ -17,5 +17,7 @@ Worklog:
 3. fix the error of "GPU instances not supported". 01/18/2024
 
 Todo:
+- [x] add instructions for the compilation of the backend.
 - [ ] test the inference of the backend.
 - [ ] clean the backend code.
+- [ ] model path in the model_repo/1 folder for people without perlmutter.

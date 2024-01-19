@@ -23,5 +23,5 @@ instance_group [
 
 parameters: {
   key: "EXECUTION_MODEL_PATH",
-  value: {string_value: "/pscratch/sd/h/hrzhao/Projects/exatrkx-acts-demonstrator/models/smeared_hits/"}
+  value: {string_value: "/global/cfs/projectdirs/m3443/data/ACTS-aaS/models/smeared_hits/"}
 }

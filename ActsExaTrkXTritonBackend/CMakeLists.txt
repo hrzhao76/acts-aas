@@ -91,7 +91,6 @@ FetchContent_MakeAvailable(repo-common repo-core repo-backend)
 # set(ACTS_EXATRKX_ENABLE_TORCH ON CACHE BOOL "Build ACTS ExaTrkX with Torch")
 
 # add_subdirectory(src/acts)
-set(CMAKE_PREFIX_PATH "/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/dev/backend_01172024")
 find_package(Acts REQUIRED)
 # The backend must be built into a shared library. Use an ldscript to
 # hide all symbols except for the TRITONBACKEND API.
@@ -162,6 +161,18 @@ install(
     triton-ActsExaTrkX-backend-targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/backends/ActsExaTrkX
   RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/backends/ActsExaTrkX
+)
+
+install(DIRECTORY model_repo
+        DESTINATION ${CMAKE_INSTALL_PREFIX}
+        USE_SOURCE_PERMISSIONS
+)
+
+install(
+  TARGETS
+    triton-ActsExaTrkX-backend
+  LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/model_repo/ActsExaTrkX
+  RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/model_repo/ActsExaTrkX
 )
 
 install(
