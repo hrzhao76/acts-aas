@@ -24,6 +24,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Modifications made by Haoran Zhao, haoran.zhao [at] cern.ch, Jan 2024.
+
 cmake_minimum_required(VERSION 3.17)
 
 project(ActsExaTrkXbackend LANGUAGES C CXX)

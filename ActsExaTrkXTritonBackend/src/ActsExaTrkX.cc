@@ -24,8 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Modifications made by Haoran Zhao, 2024.
-// Description of the modifications or additional notes:
+// Modifications made by Haoran Zhao, haoran.zhao [at] cern.ch, Jan 2024.
+// Description of the modifications or additional notes based on the recommended
+// backend template:
+// 1. include the Acts ExaTrkX pipeline
+// 2. remove the check of input and output tensor shape and datatype
 
 #include "Acts/Plugins/ExaTrkX/BoostTrackBuilding.hpp"
 #include "Acts/Plugins/ExaTrkX/ExaTrkXPipeline.hpp"
