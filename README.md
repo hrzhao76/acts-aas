@@ -23,7 +23,7 @@ source Scripts/setup_env.cfg
 tritonserver --model-repository=$INSTALLDIR/model_repo
 ```
 ### Production library
-The library has been compiled and installed at /global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_01192024. For utilizing a prebuilt version:
+The library has been compiled and installed at `/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_01192024`. For utilizing a prebuilt version:
 
 ``` bash
 export INSTALLDIR=/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_01192024

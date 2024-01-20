@@ -24,3 +24,4 @@ Todo:
 - [ ] multi-gpu support(probably).
 - [ ] clean the backend code.
 - [ ] model path in the model_repo/1 folder for people without perlmutter.
+- [ ] more customized of the backend, e.g. pass config from `config.pbtxt` to the backend.

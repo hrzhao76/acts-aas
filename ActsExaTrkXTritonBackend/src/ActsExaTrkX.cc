@@ -563,7 +563,7 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
   std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers;
 
   metricLearningConfig.modelPath = metricLearningmodelPath;
-  metricLearningConfig.numFeatures = 3;
+  metricLearningConfig.numFeatures = numFeatures;
   metricLearningConfig.embeddingDim = 8;
   metricLearningConfig.rVal = 0.2;
   metricLearningConfig.knnVal = 100;
