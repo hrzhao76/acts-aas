@@ -6,11 +6,13 @@ export INSTALLDIR=/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_011920
 export PATH=$INSTALLDIR/bin:$PATH
 export LD_LIBRARY_PATH=$INSTALLDIR/lib:$LD_LIBRARY_PATH
 
+cd /workspace/acts-aas/ActsExaTrkXStandalone
 cmake -S . -B build -DCMAKE_PREFIX_PATH=$INSTALLDIR
 cmake --build build -- -j 8
 ```
 
 ## Run ActsExaTrkXStandalone
+If you haven't run the inference.py script, you need first generate spacepoint.csv file after compiling acts. See next section for details.
 ``` bash
 python scripts/convert.py --csv_path /workspace/acts-aas/ActsExaTrkXStandalone/run/acts_nevt1_npu10_ttbar/train_all/event000000000-spacepoint.csv
 mkdir -p run/standalone_nevt1_npu10_ttbar/

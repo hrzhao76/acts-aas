@@ -19,6 +19,8 @@ Worklog:
 Todo:
 - [x] add instructions for the compilation of the backend.
 - [ ] test the inference of the backend.
+    - [x] Standalone version passed the test.
+    - [ ] Triton version.
 - [ ] multi-gpu support(probably).
 - [ ] clean the backend code.
 - [ ] model path in the model_repo/1 folder for people without perlmutter.

@@ -47,7 +47,8 @@ readCSVSPs(const std::string& filename)
 int
 main(int argc, char* argv[])
 {
-  std::cout << "Hello World!" << std::endl;
+  std::cout << "Running Standalone version of Acts ExaTrkXPipeline..."
+            << std::endl;
 
   std::string modelDir =
       "/global/cfs/projectdirs/m3443/data/ACTS-aaS/models/smeared_hits/";
@@ -70,19 +71,23 @@ main(int argc, char* argv[])
 
   metricLearningConfig.modelPath = metricLearningmodelPath;
   metricLearningConfig.numFeatures = 3;
-  metricLearningConfig.embeddingDim = 12;
+  metricLearningConfig.embeddingDim = 8;
+  metricLearningConfig.rVal = 0.2;
+  metricLearningConfig.knnVal = 100;
   std::shared_ptr<Acts::GraphConstructionBase> graphConstructor =
       std::make_shared<Acts::TorchMetricLearning>(
           metricLearningConfig, std::move(metricLearningLogger));
 
   // Set up the edge classifiers
   filterConfig.modelPath = filtermodelPath;
-  filterConfig.numFeatures = 3;
+  filterConfig.cut = 0.01;
+  filterConfig.nChunks = 5;
   auto filterClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
       filterConfig, std::move(filterLogger));
 
   gnnConfig.modelPath = gnnmodelPath;
-  gnnConfig.numFeatures = numFeatures;
+  gnnConfig.cut = 0.5;
+  gnnConfig.undirected = true;
   auto gnnClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
       gnnConfig, std::move(gnnLogger));
 
@@ -128,6 +133,8 @@ main(int argc, char* argv[])
       }
       std::cout << std::endl;
     }
+
+    std::cout << "Done Acts ExaTrkXPipeline! " << std::endl;
   }
   catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
