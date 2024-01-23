@@ -116,10 +116,12 @@ main(int argc, char* argv[])
     for (int i = 0; i < numSpacepoints; ++i) {
       spacepoint_ids.push_back(i);
     }
-
     // Run the pipeline
-    std::vector<std::vector<int>> track_candidates =
-        pipeline.run(features, spacepoint_ids);
+    const int deviceHint = -1;
+    Acts::ExaTrkXHook defaultHook;
+    Acts::ExaTrkXTiming timing;
+    std::vector<std::vector<int>> track_candidates = pipeline.run(
+        features, spacepoint_ids, deviceHint, defaultHook, &timing);
 
     std::cout << "Size of track_candidates: " << track_candidates.size()
               << std::endl;
