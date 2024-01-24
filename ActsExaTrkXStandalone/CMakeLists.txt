@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(/usr/local/cuda/include/)
 
 find_package(Acts REQUIRED)
-
+find_package(Torch REQUIRED)
 add_executable(
     ActsExaTrkXStandalone
     # src/ActsExaTrkXStandaloneClass.cpp
@@ -24,6 +24,7 @@ target_link_libraries(
     PRIVATE
         ActsCore
         ActsPluginExaTrkX
+        ${TORCH_LIBRARIES}
 )
 
 install(

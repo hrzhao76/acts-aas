@@ -47,9 +47,33 @@ readCSVSPs(const std::string& filename)
 int
 main(int argc, char* argv[])
 {
+  if (argc < 3) {
+    std::cerr << "Usage: " << argv[0] << " <event*-converted.csv>"
+              << " <device_id>" << std::endl;
+    return 1;
+  }
+
+  try {
+    // ensure the argv is a number
+    std::string arg = argv[2];
+    for (char c : arg) {
+      if (!isdigit(c)) {
+        throw std::invalid_argument("Non-numeric character found");
+      }
+    }
+
+    int device_id = std::stoi(arg);
+    2
+  }
+  catch (const std::invalid_argument& e) {
+    std::cerr << "Invalid argument: " << e.what() << std::endl;
+    return 1;
+  }
+
   std::cout << "Running Standalone version of Acts ExaTrkXPipeline..."
             << std::endl;
-
+  int device_id = std::stoi(argv[2]);
+  std::cout << "Working GPU is " << device_id << std::endl;
   std::string modelDir =
       "/global/cfs/projectdirs/m3443/data/ACTS-aaS/models/smeared_hits/";
   std::string metricLearningmodelPath = modelDir + "embed.pt";
@@ -74,6 +98,7 @@ main(int argc, char* argv[])
   metricLearningConfig.embeddingDim = 8;
   metricLearningConfig.rVal = 0.2;
   metricLearningConfig.knnVal = 100;
+  metricLearningConfig.deviceID = device_id;
   std::shared_ptr<Acts::GraphConstructionBase> graphConstructor =
       std::make_shared<Acts::TorchMetricLearning>(
           metricLearningConfig, std::move(metricLearningLogger));
@@ -82,12 +107,14 @@ main(int argc, char* argv[])
   filterConfig.modelPath = filtermodelPath;
   filterConfig.cut = 0.01;
   filterConfig.nChunks = 5;
+  filterConfig.deviceID = device_id;
   auto filterClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
       filterConfig, std::move(filterLogger));
 
   gnnConfig.modelPath = gnnmodelPath;
   gnnConfig.cut = 0.5;
   gnnConfig.undirected = true;
+  gnnConfig.deviceID = device_id;
   auto gnnClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
       gnnConfig, std::move(gnnLogger));
 
@@ -117,12 +144,12 @@ main(int argc, char* argv[])
       spacepoint_ids.push_back(i);
     }
     // Run the pipeline
-    const int deviceHint = -1;
-    Acts::ExaTrkXHook defaultHook;
-    Acts::ExaTrkXTiming timing;
-    std::vector<std::vector<int>> track_candidates = pipeline.run(
-        features, spacepoint_ids, deviceHint, defaultHook, &timing);
-
+    // Acts::ExaTrkXHook defaultHook;
+    // Acts::ExaTrkXTiming timing;
+    // std::vector<std::vector<int>> track_candidates = pipeline.run(
+    //     features, spacepoint_ids, defaultHook, &timing);
+    std::vector<std::vector<int>> track_candidates =
+        pipeline.run(features, spacepoint_ids);
     std::cout << "Size of track_candidates: " << track_candidates.size()
               << std::endl;
 

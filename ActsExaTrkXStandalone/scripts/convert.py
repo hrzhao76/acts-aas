@@ -1,5 +1,10 @@
-# this script converts the Spacepoint (x, y, z) to (r, phi, z)
-
+####################################################
+# This script converts the Spacepoint features     #
+# from (x, y, z) coordinates to (r, phi, z)        #
+# Author: Haoran Zhao                              #
+# Email: haoran.zhao [at] cern.ch                  #
+# Date: Jan 2024                                   #
+####################################################
 import argparse
 from pathlib import Path
 
@@ -15,7 +20,7 @@ def process_csv_and_convert(csv_path: Path, output_csv_path: Path = None):
             csv_path.stem + "-converted" + csv_path.suffix
         )
 
-    np.savetxt(output_csv_path, transformed_data, delimiter=",")
+    np.savetxt(output_csv_path, transformed_data, delimiter=",", fmt="%.10f")
 
 
 def convert_coordinates(original_data):
