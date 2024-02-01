@@ -16,12 +16,12 @@ output [
 ]
 instance_group [
   {
-    count: 1
+    count: 4
     kind: KIND_GPU
   }
 ]
 
 parameters: {
   key: "EXECUTION_MODEL_PATH",
-  value: {string_value: "/global/cfs/projectdirs/m3443/data/ACTS-aaS/models/smeared_hits/"}
+  value: {string_value: "/workspace/acts-aas/ActsExaTrkXTritonBackend/model_repo/ActsExaTrkX/1/"}
 }

@@ -45,9 +45,10 @@ option(TRITON_ENABLE_GPU "Enable GPU support in backend" ON)
 option(TRITON_ENABLE_STATS "Include statistics collections in backend" ON)
 
 # change "main" to "r22.02"
-set(TRITON_COMMON_REPO_TAG "r22.02" CACHE STRING "Tag for triton-inference-server/common repo")
-set(TRITON_CORE_REPO_TAG "r22.02" CACHE STRING "Tag for triton-inference-server/core repo")
-set(TRITON_BACKEND_REPO_TAG "r22.02" CACHE STRING "Tag for triton-inference-server/backend repo")
+set(TRITON_TAG "r22.02" CACHE STRING "Tag for triton-inference-server repositories")
+set(TRITON_COMMON_REPO_TAG ${TRITON_TAG} CACHE STRING "Tag for triton-inference-server/common repo")
+set(TRITON_CORE_REPO_TAG ${TRITON_TAG} CACHE STRING "Tag for triton-inference-server/core repo")
+set(TRITON_BACKEND_REPO_TAG ${TRITON_TAG} CACHE STRING "Tag for triton-inference-server/backend repo")
 
 #
 # Setting C++ min standard

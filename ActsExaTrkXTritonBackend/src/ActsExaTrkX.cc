@@ -24,17 +24,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Modifications made by Haoran Zhao, haoran.zhao [at] cern.ch, Jan 2024.
-// Description of the modifications or additional notes based on the recommended
-// backend template:
-// 1. include the Acts ExaTrkX pipeline
-// 2. remove the check of input and output tensor shape and datatype
+#include <cuda_runtime_api.h>
 
-#include "Acts/Plugins/ExaTrkX/BoostTrackBuilding.hpp"
-#include "Acts/Plugins/ExaTrkX/ExaTrkXPipeline.hpp"
-#include "Acts/Plugins/ExaTrkX/Stages.hpp"
-#include "Acts/Plugins/ExaTrkX/TorchEdgeClassifier.hpp"
-#include "Acts/Plugins/ExaTrkX/TorchMetricLearning.hpp"
+#include "ActsExaTrkXClass.hpp"
 #include "triton/backend/backend_common.h"
 #include "triton/backend/backend_input_collector.h"
 #include "triton/backend/backend_model.h"
@@ -454,60 +446,32 @@ class ModelInstanceState : public BackendModelInstance {
   static TRITONSERVER_Error* Create(
       ModelState* model_state,
       TRITONBACKEND_ModelInstance* triton_model_instance,
-      std::shared_ptr<Acts::GraphConstructionBase> graphConstructor,
-      std::vector<std::shared_ptr<Acts::EdgeClassificationBase>>
-          edgeClassifiers,
-      std::shared_ptr<Acts::TrackBuildingBase> trackBuilder, int device_id,
       ModelInstanceState** state);
   virtual ~ModelInstanceState() = default;
 
   // Get the state of the model that corresponds to this instance.
   ModelState* StateForModel() const { return model_state_; }
 
-  ModelInstanceState(
-      ModelState* model_state,
-      TRITONBACKEND_ModelInstance* triton_model_instance,
-      std::shared_ptr<Acts::GraphConstructionBase> graphConstructor,
-      std::vector<std::shared_ptr<Acts::EdgeClassificationBase>>
-          edgeClassifiers,
-      std::shared_ptr<Acts::TrackBuildingBase> trackBuilder, int device_id)
-      : BackendModelInstance(model_state, triton_model_instance),
-        model_state_(model_state), graphConstructor(graphConstructor),
-        edgeClassifiers(edgeClassifiers), trackBuilder(trackBuilder),
-        pipeline(
-            graphConstructor, edgeClassifiers, trackBuilder,
-            Acts::getDefaultLogger("ExaTrkXPipeline", Acts::Logging::VERBOSE)),
-        device_id_(device_id)
-  {
-  }
-  std::vector<std::vector<int>> RunPipeline(
-      std::vector<float>& features, std::vector<int>& spacepointIDs)
-  {
-    return pipeline.run(features, spacepointIDs);
-  }
+  std::unique_ptr<ActsExaTrkXClass> actsExaTrkXClass;
 
  private:
+  ModelInstanceState(
+      ModelState* model_state,
+      TRITONBACKEND_ModelInstance* triton_model_instance)
+      : BackendModelInstance(model_state, triton_model_instance),
+        model_state_(model_state)
+  {
+  }
+
   ModelState* model_state_;
-
-  std::shared_ptr<Acts::GraphConstructionBase> graphConstructor;
-  std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers;
-  std::shared_ptr<Acts::TrackBuildingBase> trackBuilder;
-  Acts::ExaTrkXPipeline pipeline;
-  int device_id_;
 };
-
 TRITONSERVER_Error*
 ModelInstanceState::Create(
     ModelState* model_state, TRITONBACKEND_ModelInstance* triton_model_instance,
-    std::shared_ptr<Acts::GraphConstructionBase> graphConstructor,
-    std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers,
-    std::shared_ptr<Acts::TrackBuildingBase> trackBuilder, int device_id,
     ModelInstanceState** state)
 {
   try {
-    *state = new ModelInstanceState(
-        model_state, triton_model_instance, graphConstructor, edgeClassifiers,
-        trackBuilder, device_id);
+    *state = new ModelInstanceState(model_state, triton_model_instance);
   }
   catch (const BackendModelInstanceException& ex) {
     RETURN_ERROR_IF_TRUE(
@@ -536,76 +500,16 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
   RETURN_IF_ERROR(TRITONBACKEND_ModelState(model, &vmodelstate));
   ModelState* model_state = reinterpret_cast<ModelState*>(vmodelstate);
 
-  // Get the model name, device id and the kind of model instance.
-  const char* cname;
-  RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceName(instance, &cname));
-  std::string name(cname);
-  int32_t device_id;
-  RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceDeviceId(instance, &device_id));
-  TRITONSERVER_InstanceGroupKind kind;
-  RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceKind(instance, &kind));
-
-  // Prepare the graphConstructor, edgeClassifiers and trackBuilder
-  std::string modelDir = model_state->model_path;
-  std::string metricLearningmodelPath = modelDir + "embed.pt";
-  std::string filtermodelPath = modelDir + "filter.pt";
-  std::string gnnmodelPath = modelDir + "gnn.pt";
-
-  // TODO use config to control verbosity
-  auto metricLearningLogger =
-      Acts::getDefaultLogger("MetricLearning", Acts::Logging::VERBOSE);
-  auto filterLogger =
-      Acts::getDefaultLogger("FilterModel", Acts::Logging::VERBOSE);
-  auto gnnLogger = Acts::getDefaultLogger("GNNModel", Acts::Logging::VERBOSE);
-  auto trackBuilderLogger =
-      Acts::getDefaultLogger("TrackBuilder", Acts::Logging::VERBOSE);
-  int numFeatures = 3;
-  Acts::TorchMetricLearning::Config metricLearningConfig;
-  Acts::TorchEdgeClassifier::Config filterConfig;
-  Acts::TorchEdgeClassifier::Config gnnConfig;
-  std::vector<std::shared_ptr<Acts::EdgeClassificationBase>> edgeClassifiers;
-
-  metricLearningConfig.modelPath = metricLearningmodelPath;
-  metricLearningConfig.numFeatures = numFeatures;
-  metricLearningConfig.embeddingDim = 8;
-  metricLearningConfig.rVal = 0.2;
-  metricLearningConfig.knnVal = 100;
-  metricLearningConfig.deviceID = device_id;
-  std::shared_ptr<Acts::GraphConstructionBase> graphConstructor =
-      std::make_shared<Acts::TorchMetricLearning>(
-          metricLearningConfig, std::move(metricLearningLogger));
-
-  // Set up the edge classifiers
-  filterConfig.modelPath = filtermodelPath;
-  filterConfig.cut = 0.01;
-  filterConfig.nChunks = 5;
-  filterConfig.deviceID = device_id;
-  auto filterClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
-      filterConfig, std::move(filterLogger));
-
-  gnnConfig.modelPath = gnnmodelPath;
-  gnnConfig.cut = 0.5;
-  gnnConfig.undirected = true;
-  gnnConfig.deviceID = device_id;
-  auto gnnClassifier = std::make_shared<Acts::TorchEdgeClassifier>(
-      gnnConfig, std::move(gnnLogger));
-
-  edgeClassifiers = {filterClassifier, gnnClassifier};
-
-  // Set up the track builder
-  auto trackBuilder =
-      std::make_shared<Acts::BoostTrackBuilding>(std::move(trackBuilderLogger));
-
-
   // Create a ModelInstanceState object and associate it with the
   // TRITONBACKEND_ModelInstance.
   ModelInstanceState* instance_state;
-  RETURN_IF_ERROR(ModelInstanceState::Create(
-      model_state, instance, graphConstructor, edgeClassifiers, trackBuilder,
-      device_id, &instance_state));
+  RETURN_IF_ERROR(
+      ModelInstanceState::Create(model_state, instance, &instance_state));
   RETURN_IF_ERROR(TRITONBACKEND_ModelInstanceSetState(
       instance, reinterpret_cast<void*>(instance_state)));
 
+  instance_state->actsExaTrkXClass = std::make_unique<ActsExaTrkXClass>(
+      model_state->model_path, instance_state->DeviceId(), 0);
   return nullptr;  // success
 }
 
@@ -723,7 +627,7 @@ TRITONBACKEND_ModelInstanceExecute(
 
   BackendInputCollector collector(
       requests, request_count, &responses, model_state->TritonMemoryManager(),
-      false /* pinned_enabled */, nullptr /* stream*/);
+      false /* pinned_enabled */, instance_state->CudaStream() /* stream*/);
 
   // To instruct ProcessTensor to "gather" the entire batch of input
   // tensors into a single contiguous buffer in CPU memory, set the
@@ -798,7 +702,8 @@ TRITONBACKEND_ModelInstanceExecute(
   }
 
   std::vector<std::vector<int>> track_candidates =
-      instance_state->RunPipeline(input_tensor_values, spacepoint_ids);
+      instance_state->actsExaTrkXClass->runPipeline(
+          input_tensor_values, spacepoint_ids);
 
   std::vector<int64_t> output_data(
       numSpacepoints, -1);  // Initialized all to -1
@@ -849,7 +754,7 @@ TRITONBACKEND_ModelInstanceExecute(
   BackendOutputResponder responder(
       requests, request_count, &responses, model_state->TritonMemoryManager(),
       supports_first_dim_batching, false /* pinned_enabled */,
-      nullptr /* stream*/);
+      instance_state->CudaStream() /* stream*/);
 
   responder.ProcessTensor(
       model_state->OutputTensorName().c_str(),
