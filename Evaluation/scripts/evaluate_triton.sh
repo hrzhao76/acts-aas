@@ -5,7 +5,7 @@ uname -a
 n_instance_per_gpu=${1:-1}
 n_gpus=${2:-1}
 output_csv_name=${3:-"perf_analyzer"}
-_measurement_interval=${4:-10000}
+_measurement_interval=${4:-100000}
 output_dir=${5:-"/workspace/acts-aas/Evaluation/results"}  # Default to the specified directory
 concurrency_end=${6:-10}
 concurrency_step=${7:-1}
@@ -136,6 +136,13 @@ run_perf_analyzer() {
         exit 1
     fi
 }
+
+echo "Warm up"
+perf_analyzer -m ActsExaTrkX --percentile=95 -i grpc \
+--input-data /global/cfs/projectdirs/m3443/data/ACTS-aaS/ttbarN100PU200_SPs/ttbarN100PU200_SPs.json \
+--concurrency 2:5:1 --measurement-interval 30000
+
+echo "Done warm up"
 
 
 # Run the perf_analyzer for both sync and async modes
