@@ -9,6 +9,9 @@ This repository contains information on how to build ACTS with the triton server
 # Assuming <work-dir> includes acts/ and acts-aas/
 shifter --module=gpu --volume=<work-dir>:/workspace/ --workdir=/workspace/ --image=hrzhao076/acts-triton-dev:v0.1 /bin/bash
 
+# or using podman-hpc
+podman-hpc run -it --rm --shm-size=20G --gpu -p8000:8000 -p8001:8001 -p8002:8002 -v <work-dir>:/workspace/ -v /global/cfs/projectdirs/m3443/data/ACTS-aaS/:/global/cfs/projectdirs/m3443/data/ACTS-aaS/ hrzhao076/acts-triton-dev:v0.1 /bin/bash
+
 cd /workspace/acts-aas
 # git chekcout dev/backend
 
@@ -23,10 +26,10 @@ source Scripts/setup_env.cfg
 tritonserver --model-repository=$INSTALLDIR/model_repo
 ```
 ### Production library
-The library has been compiled and installed at `/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_01192024`. For utilizing a prebuilt version:
+The library has been compiled and installed at `/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_02012024`. For utilizing a prebuilt version:
 
 ``` bash
-export INSTALLDIR=/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_01192024
+export INSTALLDIR=/global/cfs/projectdirs/m3443/data/ACTS-aaS/sw/prod/ver_02012024
 export PATH=$INSTALLDIR/bin:$PATH
 export LD_LIBRARY_PATH=$INSTALLDIR/lib:$LD_LIBRARY_PATH
 

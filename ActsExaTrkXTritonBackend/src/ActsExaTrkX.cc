@@ -196,7 +196,7 @@ class ModelState : public BackendModel {
 
   std::string model_path;
   int64_t spacepointFeatures;
-  bool model_verbose;
+  int log_level;
 
  private:
   ModelState(TRITONBACKEND_Model* triton_model);
@@ -219,7 +219,7 @@ class ModelState : public BackendModel {
 ModelState::ModelState(TRITONBACKEND_Model* triton_model)
     : BackendModel(triton_model),
       model_path("/global/cfs/projectdirs/m3443/data/ACTS-aaS/models/"),
-      spacepointFeatures(3), model_verbose(false)
+      spacepointFeatures(3), log_level(3)
 {
   // Validate that the model's configuration matches what is supported
   // by this backend.
@@ -509,7 +509,8 @@ TRITONBACKEND_ModelInstanceInitialize(TRITONBACKEND_ModelInstance* instance)
       instance, reinterpret_cast<void*>(instance_state)));
 
   instance_state->actsExaTrkXClass = std::make_unique<ActsExaTrkXClass>(
-      model_state->model_path, instance_state->DeviceId(), 0);
+      model_state->model_path, instance_state->DeviceId(),
+      model_state->log_level);
   return nullptr;  // success
 }
 
@@ -627,7 +628,7 @@ TRITONBACKEND_ModelInstanceExecute(
 
   BackendInputCollector collector(
       requests, request_count, &responses, model_state->TritonMemoryManager(),
-      false /* pinned_enabled */, instance_state->CudaStream() /* stream*/);
+      false /* pinned_enabled */, nullptr /* stream*/);
 
   // To instruct ProcessTensor to "gather" the entire batch of input
   // tensors into a single contiguous buffer in CPU memory, set the
@@ -670,20 +671,21 @@ TRITONBACKEND_ModelInstanceExecute(
   uint64_t compute_start_ns = 0;
   SET_TIMESTAMP(compute_start_ns);
 
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("model ") + model_state->Name() + ": requests in batch " +
-       std::to_string(request_count))
-          .c_str());
-  std::string tstr;
+  // LOG_MESSAGE(
+  //     TRITONSERVER_LOG_INFO,
+  //     (std::string("model ") + model_state->Name() + ": requests in batch " +
+  //      std::to_string(request_count))
+  //         .c_str());
+  // std::string tstr;
   // IGNORE_ERROR(BufferAsTypedString(
   //     tstr, input_buffer, input_buffer_byte_size,
   //     model_state->TensorDataType()));
-  LOG_MESSAGE(
-      TRITONSERVER_LOG_INFO,
-      (std::string("batched " + model_state->InputTensorName() + " value: ") +
-       tstr)
-          .c_str());
+  // LOG_MESSAGE(
+  //     TRITONSERVER_LOG_INFO,
+  //     (std::string("batched " + model_state->InputTensorName() + " value: ")
+  //     +
+  //      tstr)
+  //         .c_str());
 
   size_t num_floats =
       input_buffer_byte_size / sizeof(model_state->InputTensorDataType());
@@ -754,7 +756,7 @@ TRITONBACKEND_ModelInstanceExecute(
   BackendOutputResponder responder(
       requests, request_count, &responses, model_state->TritonMemoryManager(),
       supports_first_dim_batching, false /* pinned_enabled */,
-      instance_state->CudaStream() /* stream*/);
+      nullptr /* stream*/);
 
   responder.ProcessTensor(
       model_state->OutputTensorName().c_str(),
