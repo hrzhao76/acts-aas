@@ -9,6 +9,8 @@ python scripts/gen_json.py --csv_path /global/cfs/projectdirs/m3443/data/ACTS-aa
 
 perf_analyzer -m ActsExaTrkX --percentile=95 -i grpc --input-data /global/cfs/projectdirs/m3443/data/ACTS-aaS/ttbarN100PU200_SPs/event000000000-spacepoint-converted.json
 /global/cfs/projectdirs/m3443/data/ACTS-aaS/ttbarN100PU200_SPs/ttbarN100PU200_SPs.json
+
+shifter --module=gpu --volume=${PWD}:/workspace/ --workdir=/workspace/ --image=nvcr.io/nvidia/tritonserver:22.02-py3-sdk /bin/bash
 ```
 
 ## Benchmark on Interactive nodes

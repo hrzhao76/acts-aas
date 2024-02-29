@@ -46,7 +46,7 @@ sed -i "/gpus:/c\    gpus: [ $gpus_array ]" $output_dir/model_repo/ActsExaTrkX/c
 
 check_server_ready() {
     local max_retries=10
-    local retry_interval=5  # wait 5 seconds before re-trying
+    local retry_interval=20  # wait 5 seconds before re-trying
     local retry_count=0
     local server_ready=0  # 0 means not ready, 1 means ready
 
@@ -55,7 +55,7 @@ check_server_ready() {
     while [[ $retry_count -lt $max_retries && $server_ready -eq 0 ]]; do
         # Use curl to check the server's status. The -s flag silences curl's output, and -o /dev/null discards the actual content.
         local response=$(curl -s -o /dev/null -w "%{http_code}" localhost:8000/v2/health/ready)
-
+        echo "Response: $response"
         if [[ "$response" == "200" ]]; then
             server_ready=1
             echo "Server is ready!"
@@ -118,7 +118,7 @@ run_perf_analyzer() {
         perf_analyzer -m ActsExaTrkX --percentile=95 -i grpc --input-data /global/cfs/projectdirs/m3443/data/ACTS-aaS/ttbarN100PU200_SPs/ttbarN100PU200_SPs.json \
         --measurement-interval ${measurement_interval} $mode_flag \
         --concurrency-range 1:$concurrency_range:$concurrency_step -v \
-        -f ${output_csv} -b 1 --collect-metrics --verbose-csv
+        -f ${output_csv} -b 1 --collect-metrics --verbose-csv --metrics-interval 10000
 
         # If the file isn't generated, double the measurement_interval and retry
         if [[ ! -f ${output_csv} ]]; then
@@ -140,7 +140,7 @@ run_perf_analyzer() {
 echo "Warm up"
 perf_analyzer -m ActsExaTrkX --percentile=95 -i grpc \
 --input-data /global/cfs/projectdirs/m3443/data/ACTS-aaS/ttbarN100PU200_SPs/ttbarN100PU200_SPs.json \
---concurrency 2:5:1 --measurement-interval 30000
+--concurrency 2:4:1 --measurement-interval 30000
 
 echo "Done warm up"
 
