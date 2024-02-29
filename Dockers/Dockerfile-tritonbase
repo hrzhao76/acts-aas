@@ -2,7 +2,7 @@ FROM nvcr.io/nvidia/tritonserver:22.02-py3
 
 LABEL description="Ubuntu 20.04 with Acts dependencies and Triton Inference Server"
 LABEL maintainer="Haoran Zhao <haoran.zhao@cern.ch>"
-# reference: 
+# reference:
 # https://github.com/acts-project/machines/blob/master/ubuntu2004/Dockerfile
 # https://github.com/acts-project/machines/blob/master/ubuntu2004_exatrkx/Dockerfile
 # https://github.com/xju2/dockers/blob/main/ML/acts-triton/Dockerfile
@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND noninteractive
 WORKDIR /tmp
 
 # Update the CUDA Linux GPG Repository Key
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub 
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
 
 # install dependencies from the package manager.
 #
@@ -30,7 +30,7 @@ RUN apt-get update -y \
     libxerces-c-dev libxxhash-dev libxext-dev libxft-dev libxpm-dev libzstd-dev ninja-build patchelf pkg-config python3-dev \
     python3-numpy python3-pip python3-setuptools python3-venv rapidjson-dev rsync scons software-properties-common swig time \
     tmux tree unzip uuid-dev vim wget zlib1g-dev \
-    && apt-get clean -y   
+    && apt-get clean -y
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
@@ -266,6 +266,6 @@ RUN git clone https://github.com/triton-inference-server/client.git \
     && make -j20 && make install \
     && cd ../.. && rm -rf client
 
-RUN apt-get clean -y && rm -rf /var/lib/apt/lists/* && rm -rf /tmp/*  
+RUN apt-get clean -y && rm -rf /var/lib/apt/lists/* && rm -rf /tmp/*
 WORKDIR /workspace
 

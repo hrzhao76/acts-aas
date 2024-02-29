@@ -1,7 +1,15 @@
-# Cmake 
-build/
+# Python
+*.pyc
+__pycache__
+
+# Cmake
+build*/
 install/
 run/
+
+# results
+results/
+slurm-*/
 
 # Prerequisites
 *.d
