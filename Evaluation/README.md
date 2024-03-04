@@ -24,5 +24,15 @@ After getting an interactive node, run shifter and then execute the script, e.g.
 One can also run `.scripts/run_evaluate.sh` to test different number of instances on 1 GPU. But this script sometimes donesn't successfully generate an output csv. In future a python based script might be needed here.
 Note based on the 100 events to be used as benchmark(it ensures the variaties of events), measurement-interval should be long enough to loop through all events to get statble results.
 
+## Kubernetes
+``` bash
+# http protocol
+# Only works with ingress-v1
+perf_analyzer -m ActsExaTrkX --input-data /global/cfs/projectdirs/m3443/data/ACTS-aaS/ttbarN100PU200_SPs/event000000000-spacepoint-converted.json -u acts-triton.nrp-nautilus.io
+
+# grpc protocol
+perf_analyzer -m ActsExaTrkX -i grpc --ssl-grpc-use-ssl --percentile=95 --input-data /workspace/acts-aas/Clients/event000000000-spacepoint-converted.json -u acts-triton.nrp-nautilus.io:443
+
+```
 ### Plotting
 Refer to [plot_1GPU.ipynb](./plotting/plot_1GPU.ipynb).
