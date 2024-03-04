@@ -23,7 +23,7 @@ if __name__ == "__main__":
     try:
         concurrent_request_count = 2
         triton_client = httpclient.InferenceServerClient(
-            url=FLAGS.url, concurrency=concurrent_request_count
+            url=FLAGS.url, concurrency=concurrent_request_count, ssl=True
         )
     except Exception as e:
         print("channel creation failed: " + str(e))
