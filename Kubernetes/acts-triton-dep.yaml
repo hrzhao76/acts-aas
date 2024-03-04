@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: acts-triton-build
+  labels:
+    k8s-app: acts-triton-build
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      k8s-app: acts-triton-build
+  template:
+    metadata:
+      labels:
+        k8s-app: acts-triton-build
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                - "NVIDIA-A100-SXM4-80GB"
+      containers:
+      - name: triton-container
+        image: hrzhao076/acts-triton-dev:v0.1
+        command: ["/bin/sh", "-c"]
+        args: ["source /workspace/acts-aas/Scripts/setup_env.cfg && tritonserver --model-repository=$INSTALLDIR/model_repo/"]
+        ports:
+          - containerPort: 80
+            protocol: TCP
+          - containerPort: 8000
+            protocol: TCP
+          - containerPort: 8001
+            protocol: TCP
+          - containerPort: 8002
+            protocol: TCP
+        resources:
+          limits:
+            memory: "32Gi"
+            cpu: "16"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: "32Gi"
+            cpu: "16"
+            nvidia.com/gpu: "1"
+        volumeMounts:
+          - mountPath: "/workspace/"
+            name: acts-triton-vol
+      volumes:
+      - name: acts-triton-vol
+        persistentVolumeClaim:
+          claimName: acts-triton-vol

@@ -1,6 +1,7 @@
 # Kubernetes Notes
 ``` bash
 kubectl create -f acts-triton-pod.yaml
+kubectl create -f acts-triton-dep.yaml 
 kubectl create -f acts-triton-svc.yaml
 kubectl create -f acts-triton-ingress.yaml
 ```
@@ -11,6 +12,8 @@ kubectl create -f acts-triton-ingress.yaml
 kubectl get pod -o wide acts-triton-build
 kubectl describe pod acts-triton-build
 kubectl get svc
+kubectl get deployments
+kubectl logs <pod-name> #--previous
 
 
 kubectl exec -it acts-triton-build -- /bin/bash
@@ -53,9 +56,16 @@ perf_analyzer -m ActsExaTrkX --input-data /global/cfs/projectdirs/m3443/data/ACT
 # grpc protocol
 perf_analyzer -m ActsExaTrkX -i grpc --ssl-grpc-use-ssl --percentile=95 --input-data /workspace/acts-aas/Clients/event000000000-spacepoint-converted.json -u acts-triton.nrp-nautilus.io:443
 
+perf_analyzer -m ActsExaTrkX --percentile=95 -i grpc --ssl-grpc-use-ssl --input-data ../ttba
+rN100PU200_SPs.json -u acts-triton.nrp-nautilus.io:443 --measurement-interval 100000 --sync --concurrency 1:10:1 -b 1 --collect-metrics -f result_sync.csv --verbose-csv -v 
+
 ```
 
+## Namespace Monitor
+
+### Grafana  
+Go to the [Grafana](https://grafana.nrp-nautilus.io/d/85a562078cdf77779eaa1add43ccec1e/kubernetes-compute-resources-namespace-pods?orgId=1&refresh=10s&var-datasource=default&var-cluster=&var-namespace=extraks-aas) page.  
 
 ## References
-[Scaling and exposing](https://docs.nationalresearchplatform.org/userdocs/tutorial/basic2/)
+[Scaling and exposing](https://docs.nationalresearchplatform.org/userdocs/tutorial/basic2/)   
 [GPU Pods](https://docs.nationalresearchplatform.org/userdocs/running/gpu-pods/)
