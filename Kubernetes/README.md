@@ -56,8 +56,10 @@ perf_analyzer -m ActsExaTrkX --input-data /global/cfs/projectdirs/m3443/data/ACT
 # grpc protocol
 perf_analyzer -m ActsExaTrkX -i grpc --ssl-grpc-use-ssl --percentile=95 --input-data /workspace/acts-aas/Clients/event000000000-spacepoint-converted.json -u acts-triton.nrp-nautilus.io:443
 
-perf_analyzer -m ActsExaTrkX --percentile=95 -i grpc --ssl-grpc-use-ssl --input-data ../ttba
-rN100PU200_SPs.json -u acts-triton.nrp-nautilus.io:443 --measurement-interval 100000 --sync --concurrency 1:10:1 -b 1 --collect-metrics -f result_sync.csv --verbose-csv -v 
+
+perf_analyzer -m ActsExaTrkX --percentile=95 \
+-i grpc --ssl-grpc-use-ssl --input-data ../ttbarN100PU200_SPs.json -u acts-triton.nrp-nautilusio:443 \
+--measurement-interval 100000 --sync --concurrency 1:10:1 -b 1 --collect-metrics -f result.csv --verbose-csv
 
 ```
 
