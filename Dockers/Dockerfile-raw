@@ -47,7 +47,7 @@ ENV DD4HEP_VERSION=01-27
 ENV ONNXRUNTIME_VERSION=1.13.1
 
 ENV CUDA_ARCH=80;86
-ENV triton_repo_tag=r22.02
+ENV triton_repo_tag=r24.01
 
 ## install cmake
 ENV CMAKE_VERSION=3.23.1
@@ -120,7 +120,7 @@ RUN mkdir src \
     -Dopengl=ON \
     -Dpyroot=ON \
     -Droot7=ON \
-    && cmake --build build -- install \
+    && cmake --build build -- -j20 -- install \
     && rm -rf build src
 
 # environment variables needed to find ROOT libraries
@@ -197,7 +197,7 @@ RUN mkdir src \
     -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH} \
     -DBUILD_TESTS=OFF \
     -DBUILD_CUGRAPH_MG_TESTS=OFF \
-    && cmake --build build -- install \
+    && cmake --build build -- -j20 install \
     && rm -rf build src
 
 # Faiss for fast similarity search
@@ -248,6 +248,7 @@ RUN rm -rf src && mkdir src \
     && cmake --build build -- install \
     && rm -rf build src
 
+ENV triton_repo_tag=r22.02
 # Triton Inference Server
 RUN cd /tmp && git clone https://github.com/triton-inference-server/server.git -b ${triton_repo_tag} \
    && cd server \
